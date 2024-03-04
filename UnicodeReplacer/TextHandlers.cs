@@ -14,11 +14,6 @@ namespace UnicodeReplacer
 
         public static HashSet<int> validCodesHashSet = new HashSet<int>();
 
-        static TextHandlers()
-        {
-            ReadValidCodes();
-        }
-
         // Text processing methods
         public static string CutFileFormat(string filename)
         {
@@ -89,39 +84,6 @@ namespace UnicodeReplacer
             }
 
             return newFullPath;
-        }
-
-        // Database operations
-        private static async void ReadValidCodes()
-        {
-            using (var connection = new SqliteConnection("Data Source=ReplaceDB.db"))
-            {
-                await connection.OpenAsync();
-
-                SqliteDataReader dataReader = null;
-
-                try
-                {
-                    SqliteCommand sqlCommand = new SqliteCommand("SELECT * FROM CyrCharsInUnicode", connection);
-
-                    dataReader = await sqlCommand.ExecuteReaderAsync();
-
-                    while (await dataReader.ReadAsync())
-                    {
-                        string hexStr = "0x" + Convert.ToString(dataReader["Unicode"]);
-                        validCodesHashSet.Add(Convert.ToInt32(hexStr, 16));
-                    }
-                }
-                catch (Exception ex)
-                {
-                    System.Windows.Forms.MessageBox.Show(ex.Message, progName);
-                }
-                finally
-                {
-                    if (dataReader != null && !dataReader.IsClosed)
-                        dataReader.Close();
-                }
-            }
         }
     }
 }
