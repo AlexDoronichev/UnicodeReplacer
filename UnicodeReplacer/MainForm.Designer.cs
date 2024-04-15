@@ -34,9 +34,9 @@ namespace UnicodeReplacer
             this.splitContainer2 = new System.Windows.Forms.SplitContainer();
             this.filenameChars = new UnicodeReplacer.FilenameCharsControl();
             this.fileParams = new UnicodeReplacer.FileParamsControl();
-            this.replaceChars = new UnicodeReplacer.ReplaceCharsControl();
+            this.replaceChars = new UnicodeReplacer.ReplaceControl();
             this.splitContainer1 = new System.Windows.Forms.SplitContainer();
-            this.replaceFilenames = new UnicodeReplacer.ReplaceFilenamesControl();
+            this.replaceFilenames = new UnicodeReplacer.ReplaceControl();
             ((System.ComponentModel.ISupportInitialize)(this.splitContainer2)).BeginInit();
             this.splitContainer2.Panel1.SuspendLayout();
             this.splitContainer2.Panel2.SuspendLayout();
@@ -51,7 +51,7 @@ namespace UnicodeReplacer
             // 
             this.btnOpenReplaceCharsTable.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
             this.btnOpenReplaceCharsTable.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
-            this.btnOpenReplaceCharsTable.Location = new System.Drawing.Point(638, 383);
+            this.btnOpenReplaceCharsTable.Location = new System.Drawing.Point(638, 352);
             this.btnOpenReplaceCharsTable.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
             this.btnOpenReplaceCharsTable.Name = "btnOpenReplaceCharsTable";
             this.btnOpenReplaceCharsTable.Size = new System.Drawing.Size(129, 32);
@@ -64,7 +64,7 @@ namespace UnicodeReplacer
             // 
             this.btnOpenReplaceFilenamesTable.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
             this.btnOpenReplaceFilenamesTable.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
-            this.btnOpenReplaceFilenamesTable.Location = new System.Drawing.Point(3, 382);
+            this.btnOpenReplaceFilenamesTable.Location = new System.Drawing.Point(4, 351);
             this.btnOpenReplaceFilenamesTable.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
             this.btnOpenReplaceFilenamesTable.Name = "btnOpenReplaceFilenamesTable";
             this.btnOpenReplaceFilenamesTable.Size = new System.Drawing.Size(135, 32);
@@ -103,10 +103,10 @@ namespace UnicodeReplacer
             // 
             this.filenameChars.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this.filenameChars.Dock = System.Windows.Forms.DockStyle.Bottom;
-            this.filenameChars.Location = new System.Drawing.Point(0, 417);
+            this.filenameChars.Location = new System.Drawing.Point(0, 389);
             this.filenameChars.MinimumSize = new System.Drawing.Size(660, 2);
             this.filenameChars.Name = "filenameChars";
-            this.filenameChars.Size = new System.Drawing.Size(772, 145);
+            this.filenameChars.Size = new System.Drawing.Size(772, 173);
             this.filenameChars.TabIndex = 8;
             // 
             // fileParams
@@ -115,10 +115,9 @@ namespace UnicodeReplacer
             | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
             this.fileParams.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
-            this.fileParams.EntryChangesCount = 0;
             this.fileParams.Location = new System.Drawing.Point(0, 0);
             this.fileParams.Name = "fileParams";
-            this.fileParams.Size = new System.Drawing.Size(772, 418);
+            this.fileParams.Size = new System.Drawing.Size(772, 389);
             this.fileParams.TabIndex = 7;
             // 
             // replaceChars
@@ -130,6 +129,7 @@ namespace UnicodeReplacer
             this.replaceChars.Name = "replaceChars";
             this.replaceChars.Size = new System.Drawing.Size(183, 562);
             this.replaceChars.TabIndex = 0;
+            this.replaceChars.Type = UnicodeReplacer.ReplaceControl.ControlType.Chars;
             // 
             // splitContainer1
             // 
@@ -163,6 +163,7 @@ namespace UnicodeReplacer
             this.replaceFilenames.Name = "replaceFilenames";
             this.replaceFilenames.Size = new System.Drawing.Size(221, 562);
             this.replaceFilenames.TabIndex = 0;
+            this.replaceFilenames.Type = UnicodeReplacer.ReplaceControl.ControlType.Filenames;
             // 
             // MainForm
             // 
@@ -192,8 +193,8 @@ namespace UnicodeReplacer
         private System.Windows.Forms.Button btnOpenReplaceCharsTable;
         private FilenameCharsControl filenameChars;
         private FileParamsControl fileParams;
-        private ReplaceCharsControl replaceChars;
-        private ReplaceFilenamesControl replaceFilenames;
+        private ReplaceControl replaceChars;
+        private ReplaceControl replaceFilenames;
     }
 }
 

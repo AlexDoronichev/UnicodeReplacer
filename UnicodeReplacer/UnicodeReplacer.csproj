@@ -13,13 +13,16 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Remove="ReplaceCharsControl.cs" />
     <Compile Remove="ReplaceCharsForm.cs" />
     <Compile Remove="ReplaceCharsForm.Designer.cs" />
+    <Compile Remove="ReplaceFilenamesControl.cs" />
     <Compile Remove="ReplaceFilenamesForm.cs" />
     <Compile Remove="ReplaceFilenamesForm.Designer.cs" />
   </ItemGroup>
 
   <ItemGroup>
+    <EmbeddedResource Remove="ReplaceCharsControl.resx" />
     <EmbeddedResource Remove="ReplaceCharsForm.resx" />
     <EmbeddedResource Remove="ReplaceFilenamesForm.resx" />
   </ItemGroup>

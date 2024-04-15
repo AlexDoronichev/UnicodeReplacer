@@ -13,24 +13,12 @@
     <Compile Update="MainForm.cs">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Update="ReplaceCharsControl.cs">
-      <SubType>UserControl</SubType>
-    </Compile>
-    <Compile Update="ReplaceFilenamesControl.cs">
+    <Compile Update="ReplaceControl.cs">
       <SubType>UserControl</SubType>
     </Compile>
   </ItemGroup>
   <ItemGroup>
-    <EmbeddedResource Update="FilenameCharsControl.resx">
-      <SubType>Designer</SubType>
-    </EmbeddedResource>
-    <EmbeddedResource Update="FileParamsControl.resx">
-      <SubType>Designer</SubType>
-    </EmbeddedResource>
     <EmbeddedResource Update="MainForm.resx">
-      <SubType>Designer</SubType>
-    </EmbeddedResource>
-    <EmbeddedResource Update="ReplaceCharsControl.resx">
       <SubType>Designer</SubType>
     </EmbeddedResource>
   </ItemGroup>

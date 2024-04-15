@@ -24,8 +24,8 @@ namespace UnicodeReplacer
 
             fileParams.SetControlsLinks(filenameChars, replaceChars, replaceFilenames);
             filenameChars.SetControlsLinks(fileParams, replaceChars, replaceFilenames);
-            replaceChars.SetControlsLinks(fileParams, filenameChars, replaceFilenames);
-            replaceFilenames.SetControlsLinks(fileParams, filenameChars, replaceChars);
+            replaceChars.SetControlsLinks(fileParams, filenameChars);
+            replaceFilenames.SetControlsLinks(fileParams, filenameChars);
 
             // Setting controls
             splitContainer1.Panel1Collapsed = true;

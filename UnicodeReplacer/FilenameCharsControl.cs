@@ -13,34 +13,33 @@ namespace UnicodeReplacer
 {
     public partial class FilenameCharsControl : UserControl
     {
-        string progName = "UnicodeReplacer";
+        private string progName = "UnicodeReplacer";
 
-        DataSet dataSet = new DataSet("FilenameCharsStore");
-        DataTable dataTable = new DataTable("UnicodeCharsTable");
+        private DataSet dataSet = new DataSet("FilenameCharsStore");
+        private DataTable dataTable = new DataTable("UnicodeCharsTable");
 
-        FileParamsControl fileParams;
-        ReplaceCharsControl replaceChars;
-        ReplaceFilenamesControl replaceFilenames;
+        private FileParamsControl fileParams;
+        private ReplaceControl replaceChars;
+        private ReplaceControl replaceFilenames;
 
-        enum CopyReplaceCharsStatus
+        private enum CopyReplaceCharsStatus
         {
             Add,
             Replace,
             Complete
         }
-        CopyReplaceCharsStatus copyReplaceCharsStatus = CopyReplaceCharsStatus.Complete;
-        
-        public struct SelFile
+        private CopyReplaceCharsStatus copyReplaceCharsStatus = CopyReplaceCharsStatus.Complete;
+
+        public SelFileData selFileData = new SelFileData();
+        public struct SelFileData
         {
             public int rowInd;
             public string format;
             public string name;
             public string unicodeChars;
-            public string replace;
+            public string replaceText;
             public string origName;
         }
-
-        public SelFile selFile = new SelFile();
 
         private ToolTip toolTipSaveToReplaceCharsTable = new ToolTip();
         private ToolTip toolTipCopyReplaceChars = new ToolTip();
@@ -55,7 +54,7 @@ namespace UnicodeReplacer
             InitializeComponent();
 
             // Parameters
-            selFile.rowInd = -1;
+            selFileData.rowInd = -1;
 
             // Data sources
             dataSet.Tables.Add(dataTable);
@@ -81,7 +80,7 @@ namespace UnicodeReplacer
             toolTipReturnToOrigFilename.SetToolTip(btnReturnToOrigFilename, "Вернуть изначальное имя файла");
         }
 
-        public void SetControlsLinks(FileParamsControl fileParams, ReplaceCharsControl replaceChars, ReplaceFilenamesControl replaceFilenames)
+        public void SetControlsLinks(FileParamsControl fileParams, ReplaceControl replaceChars, ReplaceControl replaceFilenames)
         {
             this.fileParams = fileParams;
             this.replaceChars = replaceChars;
@@ -98,7 +97,7 @@ namespace UnicodeReplacer
 
                 if (String.IsNullOrEmpty(filename))
                 {
-                    selFile.rowInd = -1;
+                    selFileData.rowInd = -1;
                     return;
                 }
 
@@ -108,16 +107,18 @@ namespace UnicodeReplacer
                     fileParams.dataGrid.Rows[selRowInd].Cells["Исходное имя файла"].Value = filename;
                 }
 
+                string name = attrStr.Equals("файл") ? TextHandlers.CutFileFormat(filename) : filename;
+
                 // Setting selected file parameters to FilenameChars control
-                selFile.rowInd = selRowInd;
-                selFile.format = attrStr.Equals("файл") ? TextHandlers.GetFileFormat(origFilename) : string.Empty;
-                selFile.name = attrStr.Equals("файл") ? TextHandlers.CutFileFormat(filename) : filename;
-                selFile.unicodeChars = TextHandlers.GetUnicodeFromText(selFile.name);
-                selFile.replace = fileParams.dataGrid.Rows[selRowInd].Cells["Замена"].Value as string;
-                selFile.origName = attrStr.Equals("файл") ? TextHandlers.CutFileFormat(origFilename) : origFilename;
+                selFileData.rowInd = selRowInd;
+                selFileData.format = attrStr.Equals("файл") ? TextHandlers.GetFileFormat(origFilename) : string.Empty;
+                selFileData.name = name;
+                selFileData.unicodeChars = TextHandlers.GetUnicodeFromText(name);
+                selFileData.replaceText = fileParams.dataGrid.Rows[selRowInd].Cells["Замена"].Value as string;
+                selFileData.origName = attrStr.Equals("файл") ? TextHandlers.CutFileFormat(origFilename) : origFilename;
             }
             else
-                selFile.rowInd = -1;
+                selFileData.rowInd = -1;
 
             UpdateTable();
         }
@@ -126,7 +127,7 @@ namespace UnicodeReplacer
         public void UpdateTable()
         {
             // If no filename selected, clearing textboxes and disabling checkboxes and buttons
-            if (selFile.rowInd < 0)
+            if (selFileData.rowInd < 0)
             {
                 textBoxNewName.Text = string.Empty;
                 textBoxOrigName.Text = string.Empty;
@@ -148,11 +149,11 @@ namespace UnicodeReplacer
             dataTable.Columns.Clear();
 
             // Getting original filename
-            textBoxOrigName.Text = selFile.origName;
+            textBoxOrigName.Text = selFileData.origName;
 
             // Getting characters' set
-            textBoxNewName.Text = selFile.name;
-            string filenameChars = selFile.name.Replace(" ", "");
+            textBoxNewName.Text = selFileData.name;
+            string filenameChars = selFileData.name.Replace(" ", "");
             if (String.IsNullOrEmpty(filenameChars))
                 return;
 
@@ -167,15 +168,15 @@ namespace UnicodeReplacer
             {
                 dataTable.Columns.Add();
 
-                char filenameChar = filenameChars[i];
-                tableRow1[i] = filenameChar.ToString();
+                string filenameChar = filenameChars[i].ToString();
+                tableRow1[i] = filenameChar;
                 if (checkBoxShowCode.Checked)
-                    tableRow1[i] += String.Format(" ({0})", (int)filenameChar);
+                    tableRow1[i] += String.Format(" ({0})", (int)filenameChar[0]);
 
                 string replaceChar = string.Empty;
-                if (!TextHandlers.IsCharCyrilic(filenameChar) && replaceChars.dict.ContainsKey(filenameChar))
+                if (!TextHandlers.IsCharCyrilic(filenameChar[0]) && replaceChars.DictContainsKey(filenameChar))
                 {
-                    replaceChar = replaceChars.dict[filenameChar];
+                    replaceChar = replaceChars.DictGetValue(filenameChar);
                     haveReplace = true;
                 }
                 tableRow2[i] = replaceChar;
@@ -227,10 +228,10 @@ namespace UnicodeReplacer
 
                 if (!TextHandlers.IsCharCyrilic(unicodeChar[0]))
                 {
-                    if (replaceChars.dict.ContainsKey(unicodeChar[0]))
+                    if (replaceChars.DictContainsKey(unicodeChar))
                     {
                         string replaceChar = dataGrid.Rows[1].Cells[i].Value as string;
-                        string newReplaceChar = replaceChars.dict[unicodeChar[0]];
+                        string newReplaceChar = replaceChars.DictGetValue(unicodeChar);
                         if (!newReplaceChar.Equals(replaceChar))
                         {
                             dataGrid.Rows[1].ReadOnly = false;
@@ -308,7 +309,7 @@ namespace UnicodeReplacer
             // Checking correction of user input
             dataGrid.Rows[rowInd].ErrorText = String.Empty;
 
-            if (newUserInput.Length > ReplaceCharsControl.maxReplChars)
+            if (newUserInput.Length > ReplaceControl.GetMaxReplaceChars())
             {
                 dataGrid.Rows[rowInd].ErrorText = "Введите до 2-х символов";
                 dataGrid.CancelEdit();
@@ -447,7 +448,7 @@ namespace UnicodeReplacer
         {
             bool origNameIsUnicode = TextHandlers.IsUnicodeInText(textBoxOrigName.Text);
             bool newNameIsCyrilic = !TextHandlers.IsUnicodeInText(textBoxNewName.Text);
-            bool existInTable = replaceFilenames.dict.ContainsKey(textBoxOrigName.Text);
+            bool existInTable = replaceFilenames.DictContainsKey(textBoxOrigName.Text);
             btnSaveToReplaceFilenamesTable.Enabled = origNameIsUnicode && newNameIsCyrilic && !existInTable;
             btnSaveSelFilenameToFile.Enabled = !textBoxOrigName.Text.Equals(textBoxNewName.Text) && !textBoxNewName.Text.Equals(string.Empty);
             btnReturnToOrigFilename.Enabled = !textBoxOrigName.Text.Equals(textBoxNewName.Text);
@@ -458,7 +459,7 @@ namespace UnicodeReplacer
             if (dataGrid.Columns.Count == 0)
                 return;
 
-            if (selFile.unicodeChars.Length < 1)
+            if (selFileData.unicodeChars.Length < 1)
                 return;
 
             // Replacing all unicode characters by user's replacing characters
@@ -473,27 +474,27 @@ namespace UnicodeReplacer
                     continue;
 
                 char unicodeChar = unicodeCharStr[0]; // Cutting the code, if exist
-                if (!TextHandlers.IsCharCyrilic(unicodeChar) && selFile.name.Contains(unicodeChar))
-                    selFile.name = selFile.name.Replace(unicodeChar.ToString(), userInputChar);
+                if (!TextHandlers.IsCharCyrilic(unicodeChar) && selFileData.name.Contains(unicodeChar))
+                    selFileData.name = selFileData.name.Replace(unicodeChar.ToString(), userInputChar);
             }
 
-            selFile.unicodeChars = TextHandlers.GetUnicodeFromText(selFile.name);
+            selFileData.unicodeChars = TextHandlers.GetUnicodeFromText(selFileData.name);
 
             // Updating filename
-            string newName = selFile.name;
-            string curFilename = Convert.ToString(fileParams.dataGrid.Rows[selFile.rowInd].Cells["Имя файла"].Value);
-            string attr = Convert.ToString(fileParams.dataGrid.Rows[selFile.rowInd].Cells["Атрибут"].Value);
+            string newName = selFileData.name;
+            string curFilename = Convert.ToString(fileParams.dataGrid.Rows[selFileData.rowInd].Cells["Имя файла"].Value);
+            string attr = Convert.ToString(fileParams.dataGrid.Rows[selFileData.rowInd].Cells["Атрибут"].Value);
             string curName = attr.Equals("файл") ? TextHandlers.CutFileFormat(curFilename) : curFilename;
             if (!newName.Equals(curName))
             {
-                fileParams.dataGrid.Rows[selFile.rowInd].Cells["Имя файла"].Value = newName + selFile.format;
+                fileParams.dataGrid.Rows[selFileData.rowInd].Cells["Имя файла"].Value = newName + selFileData.format;
 
-                string origFilename = Convert.ToString(fileParams.dataGrid.Rows[selFile.rowInd].Cells["Исходное имя файла"].Value);
+                string origFilename = Convert.ToString(fileParams.dataGrid.Rows[selFileData.rowInd].Cells["Исходное имя файла"].Value);
                 string origName = attr.Equals("файл") ? TextHandlers.CutFileFormat(origFilename) : origFilename;
                 if (origName.Equals(curName))
-                    fileParams.EntryChangesCount++;
+                    fileParams.EntryChangesCountInc();
                 else if (origName.Equals(newName))
-                    fileParams.EntryChangesCount--;
+                    fileParams.EntryChangesCountDec();
             }
 
             UpdateTable();
@@ -542,7 +543,7 @@ namespace UnicodeReplacer
                 string userInputChar = dataGrid.Rows[2].Cells[i].Value as string;
                 if (!String.IsNullOrEmpty(userInputChar) && !userInputChar.Equals(replaceChar))
                 {
-                    replaceChars.EditEntry(unicodeCharStr[0], userInputChar);
+                    replaceChars.EditEntry(unicodeCharStr, userInputChar);
                     EditEntryInFilenameCharsTable(i, userInputChar);
                 }
             }
@@ -551,34 +552,34 @@ namespace UnicodeReplacer
         private void btnSaveToReplaceFilenamesTable_Click(object sender, EventArgs e)
         {
             replaceFilenames.EditEntry(textBoxOrigName.Text, textBoxNewName.Text);
-            fileParams.EditReplaceInFilenameCharsTable(selFile.rowInd, textBoxNewName.Text);
+            fileParams.EditReplaceInFilenameCharsTable(selFileData.rowInd, textBoxNewName.Text);
         }
 
         private void btnSaveSelFilenameToFile_Click(object sender, EventArgs e)
         {
             // Checking file parameters
-            if (selFile.rowInd < 0)
+            if (selFileData.rowInd < 0)
             {
                 btnSaveSelFilenameToFile.Enabled = false;
                 return;
             }
 
-            if (String.IsNullOrEmpty(selFile.name))
+            if (String.IsNullOrEmpty(selFileData.name))
             {
                 MessageBox.Show("Имя файла не должно быть пустым", progName);
                 return;
             }
 
-            string filename = selFile.name + selFile.format;
-            string origFilename = selFile.origName + selFile.format;
-            string path = fileParams.dataGrid.Rows[selFile.rowInd].Cells["Путь"].Value as string;
+            string filename = selFileData.name + selFileData.format;
+            string origFilename = selFileData.origName + selFileData.format;
+            string path = fileParams.dataGrid.Rows[selFileData.rowInd].Cells["Путь"].Value as string;
 
             if (String.IsNullOrEmpty(origFilename))
             {
-                origFilename = fileParams.dataGrid.Rows[selFile.rowInd].Cells["Исходное имя файла"].Value as string;
+                origFilename = fileParams.dataGrid.Rows[selFileData.rowInd].Cells["Исходное имя файла"].Value as string;
                 if (String.IsNullOrEmpty(origFilename))
                 {
-                    fileParams.dataGrid.Rows[selFile.rowInd].Cells["Исходное имя файла"].Value = filename;
+                    fileParams.dataGrid.Rows[selFileData.rowInd].Cells["Исходное имя файла"].Value = filename;
                     return;
                 }
             }
@@ -589,7 +590,7 @@ namespace UnicodeReplacer
             string curFilepath = Path.Combine(path, origFilename);
             string newFilepath = Path.Combine(path, filename);
 
-            string attr = fileParams.dataGrid.Rows[selFile.rowInd].Cells["Атрибут"].Value as string;
+            string attr = fileParams.dataGrid.Rows[selFileData.rowInd].Cells["Атрибут"].Value as string;
             bool curEntryExists = attr == "файл" ? File.Exists(curFilepath) : Directory.Exists(curFilepath);
             
             if (!curEntryExists)
@@ -641,9 +642,9 @@ namespace UnicodeReplacer
                 }
                 finally
                 {
-                    fileParams.dataGrid.Rows[selFile.rowInd].Cells["Имя файла"].Value = filename;
+                    fileParams.dataGrid.Rows[selFileData.rowInd].Cells["Имя файла"].Value = filename;
                     fileParams.dataGrid.Columns["Исходное имя файла"].ReadOnly = false;
-                    fileParams.dataGrid.Rows[selFile.rowInd].Cells["Исходное имя файла"].Value = filename;
+                    fileParams.dataGrid.Rows[selFileData.rowInd].Cells["Исходное имя файла"].Value = filename;
                     fileParams.dataGrid.Columns["Исходное имя файла"].ReadOnly = false;
 
                     if (attr == "файл")
@@ -656,9 +657,9 @@ namespace UnicodeReplacer
 
         private void btnReturnToOrigFilename_Click(object sender, EventArgs e)
         {
-            string filename = Convert.ToString(fileParams.dataGrid.Rows[selFile.rowInd].Cells["Имя файла"].Value);
-            string origFilename = Convert.ToString(fileParams.dataGrid.Rows[selFile.rowInd].Cells["Исходное имя файла"].Value);
-            string attr = Convert.ToString(fileParams.dataGrid.Rows[selFile.rowInd].Cells["Атрибут"].Value);
+            string filename = Convert.ToString(fileParams.dataGrid.Rows[selFileData.rowInd].Cells["Имя файла"].Value);
+            string origFilename = Convert.ToString(fileParams.dataGrid.Rows[selFileData.rowInd].Cells["Исходное имя файла"].Value);
+            string attr = Convert.ToString(fileParams.dataGrid.Rows[selFileData.rowInd].Cells["Атрибут"].Value);
             if (origFilename.Equals(filename))
             {
                 textBoxOrigName.Text = TextHandlers.CutFileFormat(origFilename);
@@ -666,8 +667,8 @@ namespace UnicodeReplacer
             }
             else
             {
-                fileParams.dataGrid.Rows[selFile.rowInd].Cells["Имя файла"].Value = origFilename;
-                fileParams.EntryChangesCount--;
+                fileParams.dataGrid.Rows[selFileData.rowInd].Cells["Имя файла"].Value = origFilename;
+                fileParams.EntryChangesCountDec();
             }
         }
     }

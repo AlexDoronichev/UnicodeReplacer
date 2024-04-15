@@ -13,20 +13,24 @@ namespace UnicodeReplacer
 {
     public partial class FileParamsControl : UserControl
     {
-        string progName = "UnicodeReplacer";
+        private string progName = "UnicodeReplacer";
 
-        DataSet dataSet = new DataSet("FileStore");
-        DataTable dataTable = new DataTable("FileParams");
+        private DataSet dataSet = new DataSet("FileStore");
+        private DataTable dataTable = new DataTable("FileParams");
 
-        FilenameCharsControl filenameChars;
-        ReplaceCharsControl replaceChars;
-        ReplaceFilenamesControl replaceFilenames;
+        private FilenameCharsControl filenameChars;
+        private ReplaceControl replaceChars;
+        private ReplaceControl replaceFilenames;
 
-        bool usedOtherFormats = false;
+        private bool usedOtherFormats = false;
 
-        int entryChangesCount = 0;
+        private ToolTip toolTipSaveFilenamesToFiles = new ToolTip();
+        private ToolTip toolTipCopyReplaceFilenames = new ToolTip();
+        private ToolTip toolTipReturnToOrigFilenames = new ToolTip();
 
-        public int EntryChangesCount
+
+        private int entryChangesCount = 0;
+        private int EntryChangesCount
         {
             get { return entryChangesCount; }
             set
@@ -39,12 +43,7 @@ namespace UnicodeReplacer
                 }
             }
         }
-
         public event EventHandler EntryChangesCountValueChanged;
-
-        private ToolTip toolTipSaveFilenamesToFiles = new ToolTip();
-        private ToolTip toolTipCopyReplaceFilenames = new ToolTip();
-        private ToolTip toolTipReturnToOrigFilenames = new ToolTip();
 
         public FileParamsControl()
         {
@@ -116,11 +115,21 @@ namespace UnicodeReplacer
             toolTipReturnToOrigFilenames.SetToolTip(btnReturnToOrigFilenames, "Вернуть изначальные имена файлов");
         }
 
-        public void SetControlsLinks(FilenameCharsControl filenameChars, ReplaceCharsControl replaceChars, ReplaceFilenamesControl replaceFilenames)
+        public void SetControlsLinks(FilenameCharsControl filenameChars, ReplaceControl replaceChars, ReplaceControl replaceFilenames)
         {
             this.filenameChars = filenameChars;
             this.replaceChars = replaceChars;
             this.replaceFilenames = replaceFilenames;
+        }
+
+        // Operations with fields
+        public void EntryChangesCountInc()
+        {
+            EntryChangesCount++;
+        }
+        public void EntryChangesCountDec()
+        {
+            EntryChangesCount--;
         }
 
         // DataGrid edit methods
@@ -133,10 +142,10 @@ namespace UnicodeReplacer
                 string filename = attrStr.Equals("файл") ? TextHandlers.CutFileFormat(fullFilename) : fullFilename;
                 if (TextHandlers.IsUnicodeInText(filename))
                 {
-                    if (replaceFilenames.dict.ContainsKey(filename))
+                    if (replaceFilenames.DictContainsKey(filename))
                     {
                         string replaceName = dataGrid.Rows[i].Cells["Замена"].Value as string;
-                        string newReplaceName = replaceFilenames.dict[filename];
+                        string newReplaceName = replaceFilenames.DictGetValue(filename);
                         if (!newReplaceName.Equals(replaceName))
                         {
                             dataGrid.Columns["Замена"].ReadOnly = false;
@@ -221,7 +230,7 @@ namespace UnicodeReplacer
             int selectedCellCount = dataGrid.GetCellCount(DataGridViewElementStates.Selected);
             if (selectedCellCount > 0)
             {
-                FilenameCharsControl.SelFile selFile = filenameChars.selFile;
+                FilenameCharsControl.SelFileData selFile = filenameChars.selFileData;
                 if (selFile.rowInd == rowInd)
                 {
                     filenameChars.SelectedRowParamsChanged(rowInd);
@@ -293,9 +302,9 @@ namespace UnicodeReplacer
 
                             // Getting replacement for filename
                             string replaceName = string.Empty;
-                            if (unicodeChars != string.Empty && replaceFilenames.dict.ContainsKey(name))
+                            if (unicodeChars != string.Empty && replaceFilenames.DictContainsKey(name))
                             {
-                                replaceName = replaceFilenames.dict[name];
+                                replaceName = replaceFilenames.DictGetValue(name);
                                 btnCopyReplaceFilenames.Enabled = true;
                             }
 

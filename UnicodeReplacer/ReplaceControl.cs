@@ -11,36 +11,54 @@ using Microsoft.Data.Sqlite;
 
 namespace UnicodeReplacer
 {
-    public partial class ReplaceFilenamesControl : UserControl
+    public partial class ReplaceControl : UserControl
     {
-        string progName = "UnicodeReplacer";
+        private string progName = "UnicodeReplacer";
 
-        DataSet dataSet = new DataSet("ReplaceFilenamesStore");
-        DataTable dataTable = new DataTable("ReplaceFilenamesTable");
+        private DataSet dataSet = new DataSet("Store");
+        private DataTable dataTable = new DataTable("Table");
 
-        FileParamsControl fileParams;
-        FilenameCharsControl filenameChars;
-        ReplaceCharsControl replaceChars;
+        private FileParamsControl fileParams;
+        private FilenameCharsControl filenameChars;
 
-        public Dictionary<string, string> dict = new Dictionary<string, string>();
+        private Dictionary<string, string> dict = new Dictionary<string, string>();
+
+        private static int maxUnicodeChars;
+        private static int maxReplaceChars;
+
+        public enum ControlType
+        {
+            Chars,
+            Filenames
+        }
+
+        private ControlType type;
+
+        public ControlType Type
+        {
+            get { return type; }
+            set
+            {
+                type = value;
+                TypeDependentBlock(value);
+            }
+        }
 
         // If DataTable and Dictionary has differences - true, otherwise - false
-        private bool haveChanges;
-
-        public bool HasChanges
+        private bool hasChanges;
+        private bool HasChanges
         {
-            get { return haveChanges; }
-            private set
+            get { return hasChanges; }
+            set
             {
-                if (value != haveChanges)
+                if (value != hasChanges)
                 {
-                    haveChanges = value;
+                    hasChanges = value;
                     if (HasChangesValueChanged != null)
                         HasChangesValueChanged(this, EventArgs.Empty);
                 }
             }
         }
-
         public event EventHandler HasChangesValueChanged;
 
         private ToolTip toolTipAddRow = new ToolTip();
@@ -48,11 +66,11 @@ namespace UnicodeReplacer
         private ToolTip toolTipAcceptChanges = new ToolTip();
         private ToolTip toolTipDeclineChanges = new ToolTip();
 
-        public ReplaceFilenamesControl()
+        public ReplaceControl()
         {
             InitializeComponent();
 
-            // Display options
+            // Options
             SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw
                 | ControlStyles.SupportsTransparentBackColor | ControlStyles.UserPaint, true);
             DoubleBuffered = true;
@@ -62,20 +80,16 @@ namespace UnicodeReplacer
             dataGrid.DataSource = dataSet.Tables[0];
 
             // DataTable columns
-            dataTable.Columns.Add("Название", typeof(string));
+            dataTable.Columns.Add("Юникод", typeof(string));
             dataTable.Columns.Add("Замена", typeof(string));
 
-            // Parameters
+            // DataGrid parameters
             dataGrid.RowHeadersWidth = 50;
-            dataGrid.Columns["Название"].HeaderText = "Название";
-            dataGrid.Columns["Название"].Width = 80;
-            //dataGrid.AutoResizeColumn(0);
+            dataGrid.Columns["Юникод"].HeaderText = "Юникод";
+            dataGrid.Columns["Юникод"].Width = 60;
             dataGrid.Columns["Замена"].HeaderText = "Замена";
             dataGrid.Columns["Замена"].AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
 
-            // Getting content for table
-            ReadReplaceFilenamesDB();
-            UpdateTable();
 
             // Buttons
             btnDeleteRow.Enabled = dataGrid.Rows.Count > 1;
@@ -108,11 +122,46 @@ namespace UnicodeReplacer
             toolTipDeclineChanges.SetToolTip(btnDeclineChanges, "Отменить изменения");
         }
 
-        public void SetControlsLinks(FileParamsControl fileParams, FilenameCharsControl filenameChars, ReplaceCharsControl replaceChars)
+        private void TypeDependentBlock(ControlType curType)
+        {
+            // Setting titles
+            tableLabel.Text = curType == ControlType.Chars ? "Замена символов" : "Замена названий";
+            dataGrid.Columns["Юникод"].HeaderText = curType == ControlType.Chars ? "Юникод-символ" : "Юникод-название";
+
+            // Getting content for table
+            ReadReplaceDB();
+            UpdateTable();
+
+            // Setting options
+            maxUnicodeChars = curType == ControlType.Chars ? 1 : 255;
+            maxReplaceChars = curType == ControlType.Chars ? 5 : 255;
+        }
+
+        public void SetControlsLinks(FileParamsControl fileParams, FilenameCharsControl filenameChars)
         {
             this.fileParams = fileParams;
             this.filenameChars = filenameChars;
-            this.replaceChars = replaceChars;
+        }
+
+        // Operations with fields
+        public static int GetMaxUnicodeChars()
+        {
+            return maxUnicodeChars;
+        }
+
+        public static int GetMaxReplaceChars()
+        {
+            return maxReplaceChars;
+        }
+
+        public bool DictContainsKey(string key)
+        {
+            return dict.ContainsKey(key);
+        }
+
+        public string DictGetValue(string key)
+        {
+            return dict[key];
         }
 
         // DataTable and Dictionary operations
@@ -131,19 +180,19 @@ namespace UnicodeReplacer
             HasChanges = false;
         }
 
-        public void EditEntry(string unicodeName, string cyrilicName)
+        public void EditEntry(string unicodeUnit, string cyrilicUnit)
         {
-            if (dict.ContainsKey(unicodeName))
+            if (dict.ContainsKey(unicodeUnit))
             {
-                dict[unicodeName] = cyrilicName;
-                EditEntryInTable(unicodeName, cyrilicName);
-                EditEntryToReplaceFilenamesDB(unicodeName, cyrilicName);
+                dict[unicodeUnit] = cyrilicUnit;
+                EditEntryInTable(unicodeUnit, cyrilicUnit);
+                EditEntryToReplaceDB(unicodeUnit, cyrilicUnit);
             }
             else
             {
-                dict.Add(unicodeName, cyrilicName);
-                AddEntryToDataTable(unicodeName, cyrilicName);
-                AddEntryToReplaceFilenamesDB(unicodeName, cyrilicName);
+                dict.Add(unicodeUnit, cyrilicUnit);
+                AddEntryToDataTable(unicodeUnit, cyrilicUnit);
+                AddEntryToReplaceDB(unicodeUnit, cyrilicUnit);
             }
 
             btnDeleteRow.Enabled = dataGrid.Rows.Count > 1;
@@ -155,7 +204,7 @@ namespace UnicodeReplacer
 
             if (dataGrid.Rows.Count == 2)
             {
-                string unicodeStr = dataGrid.Rows[0].Cells["Название"].Value as string;
+                string unicodeStr = dataGrid.Rows[0].Cells["Юникод"].Value as string;
                 string cyrilicStr = dataGrid.Rows[0].Cells["Замена"].Value as string;
                 if (String.IsNullOrEmpty(unicodeStr) && String.IsNullOrEmpty(cyrilicStr))
                     dataGrid.Rows.RemoveAt(0);
@@ -166,7 +215,7 @@ namespace UnicodeReplacer
         {
             for (int i = 0; i < dataGrid.Rows.Count; i++)
             {
-                string unicodeName = dataGrid.Rows[i].Cells["Название"].Value as string;
+                string unicodeName = dataGrid.Rows[i].Cells["Юникод"].Value as string;
                 if (!String.IsNullOrEmpty(unicodeName) && newUnicodeName.Equals(unicodeName))
                 {
                     dataGrid.Rows[i].Cells["Замена"].Value = newCyrilicName;
@@ -175,7 +224,7 @@ namespace UnicodeReplacer
             }
         }
 
-        public bool SaveChanges() // Saving changes from DataGrid to Dictionary
+        private bool SaveChanges() // Saving changes from DataGrid to Dictionary
         {
             int entriesAdded = 0;
             int entriesEdited = 0;
@@ -184,11 +233,11 @@ namespace UnicodeReplacer
             // Writing entries to Dictionary
             for (int i = 0; i < dataGrid.Rows.Count; i++)
             {
-                string newUnicodeName = dataGrid.Rows[i].Cells["Название"].Value as string;
-                string newCyrilicName = dataGrid.Rows[i].Cells["Замена"].Value as string;
+                string newUnicodeUnit = dataGrid.Rows[i].Cells["Юникод"].Value as string;
+                string newCyrilicUnit = dataGrid.Rows[i].Cells["Замена"].Value as string;
 
                 // Deleting incomplete pairs
-                if (String.IsNullOrEmpty(newUnicodeName) || String.IsNullOrEmpty(newCyrilicName))
+                if (String.IsNullOrEmpty(newUnicodeUnit) || String.IsNullOrEmpty(newCyrilicUnit))
                 {
                     if (dataGrid.Rows.Count > 1)
                     {
@@ -197,29 +246,33 @@ namespace UnicodeReplacer
                     }
                     else if (dataGrid.Rows.Count == 1)
                     {
-                        dataGrid.Rows[0].Cells["Название"].Value = string.Empty;
+                        dataGrid.Rows[0].Cells["Юникод"].Value = string.Empty;
                         dataGrid.Rows[0].Cells["Замена"].Value = string.Empty;
                         break;
                     }
                 }
 
-                if (dict.ContainsKey(newUnicodeName))
+                // Filtering wrong length of inputs
+                if (newUnicodeUnit.Length > maxUnicodeChars || newCyrilicUnit.Length > maxReplaceChars)
+                    continue;
+
+                if (dict.ContainsKey(newUnicodeUnit))
                 {
                     // Adding entries to Dictionary
-                    string oldCyrilicStr = dict[newUnicodeName];
+                    string oldCyrilicUnit = dict[newUnicodeUnit];
 
-                    if (!newCyrilicName.Equals(oldCyrilicStr))
+                    if (!newCyrilicUnit.Equals(oldCyrilicUnit))
                     {
-                        dict[newUnicodeName] = newCyrilicName;
-                        EditEntryToReplaceFilenamesDB(newUnicodeName, newCyrilicName);
+                        dict[newUnicodeUnit] = newCyrilicUnit;
+                        EditEntryToReplaceDB(newUnicodeUnit, newCyrilicUnit);
                         entriesEdited++;
                     }
                 }
                 else
                 {
                     // Editing entries of Dictionary
-                    dict.Add(newUnicodeName, newCyrilicName);
-                    AddEntryToReplaceFilenamesDB(newUnicodeName, newCyrilicName);
+                    dict.Add(newUnicodeUnit, newCyrilicUnit);
+                    AddEntryToReplaceDB(newUnicodeUnit, newCyrilicUnit);
                     entriesAdded++;
                 }
             }
@@ -230,7 +283,7 @@ namespace UnicodeReplacer
                 bool existInDataGrid = false;
                 for (int i = 0; i < dataGrid.Rows.Count; i++)
                 {
-                    DataGridViewCell cell = dataGrid.Rows[i].Cells["Название"];
+                    DataGridViewCell cell = dataGrid.Rows[i].Cells["Юникод"];
                     if (unicodeName.Equals(cell.Value as string))
                     {
                         existInDataGrid = true;
@@ -241,7 +294,7 @@ namespace UnicodeReplacer
                 if (!existInDataGrid)
                 {
                     dict.Remove(unicodeName);
-                    DeleteEntryFromReplaceFilenamesDB(unicodeName);
+                    DeleteEntryFromReplaceDB(unicodeName);
                     entriesDeleted++;
                 }
             }
@@ -259,7 +312,7 @@ namespace UnicodeReplacer
         }
 
         // Database operations
-        private async void ReadReplaceFilenamesDB()
+        private async void ReadReplaceDB()
         {
             dict.Clear();
 
@@ -271,12 +324,23 @@ namespace UnicodeReplacer
 
                 try
                 {
-                    SqliteCommand command = new SqliteCommand(
-                        "CREATE TABLE IF NOT EXISTS ReplaceFilenames(Id INTEGER PRIMARY KEY, UnicodeName VARCHAR NOT NULL, CyrilicName VARCHAR NOT NULL, UNIQUE(UnicodeName))",
-                        connection);
+                    SqliteCommand command = new SqliteCommand();
+                    command.Connection = connection;
+
+                    if (Type == ControlType.Chars)
+                    {
+                        command.CommandText = "CREATE TABLE IF NOT EXISTS ReplaceChars(Id INT NOT NULL PRIMARY KEY, " +
+                            "UnicodeChar CHAR NOT NULL, CyrilicChar CHAR(5) NOT NULL, UNIQUE(Id, UnicodeChar))";
+                    }
+                    else
+                    {
+                        command.CommandText = "CREATE TABLE IF NOT EXISTS ReplaceNames(Id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, " +
+                            "UnicodeName VARCHAR NOT NULL, CyrilicName VARCHAR NOT NULL, UNIQUE(Id, UnicodeName))";
+                    }
+
                     await command.ExecuteNonQueryAsync();
 
-                    command.CommandText = "SELECT * FROM ReplaceFilenames";
+                    command.CommandText = Type == ControlType.Chars ? "SELECT * FROM ReplaceChars" : "SELECT * FROM ReplaceNames";
 
                     dataReader = await command.ExecuteReaderAsync();
 
@@ -299,7 +363,7 @@ namespace UnicodeReplacer
             }
         }
 
-        private async void AddEntryToReplaceFilenamesDB(string unicodeName, string cyrilicName)
+        private async void AddEntryToReplaceDB(string unicodeUnit, string cyrilicUnit)
         {
             using (SqliteConnection connection = new SqliteConnection("Data Source=ReplaceDB.db"))
             {
@@ -311,11 +375,22 @@ namespace UnicodeReplacer
                     {
                         command.Connection = connection;
 
-                        // Adding entry into DB
-                        command.CommandText = "INSERT INTO [ReplaceFilenames] (UnicodeName, CyrilicName) " +
+                        if (Type == ControlType.Chars)
+                        {
+                            command.CommandText = "INSERT INTO [ReplaceChars] (Id, UnicodeChar, CyrilicChar) " +
+                                              "VALUES (@Id, @UnicodeChar, @CyrilicChar)";
+
+                            command.Parameters.AddWithValue("@Id", (int)unicodeUnit[0]);
+                            command.Parameters.AddWithValue("@UnicodeChar", unicodeUnit[0]);
+                            command.Parameters.AddWithValue("@CyrilicChar", cyrilicUnit);
+                        }
+                        else
+                        {
+                            command.CommandText = "INSERT INTO [ReplaceNames] (UnicodeName, CyrilicName) " +
                                               "VALUES (@UnicodeName, @CyrilicName)";
-                        command.Parameters.AddWithValue("@UnicodeName", unicodeName);
-                        command.Parameters.AddWithValue("@CyrilicName", cyrilicName);
+                            command.Parameters.AddWithValue("@UnicodeName", unicodeUnit);
+                            command.Parameters.AddWithValue("@CyrilicName", cyrilicUnit);
+                        }
 
                         await command.ExecuteScalarAsync();
                     }
@@ -327,7 +402,7 @@ namespace UnicodeReplacer
             }
         }
 
-        private async void EditEntryToReplaceFilenamesDB(string unicodeName, string cyrilicName)
+        private async void EditEntryToReplaceDB(string unicodeUnit, string cyrilicUnit)
         {
             using (SqliteConnection connection = new SqliteConnection("Data Source=ReplaceDB.db"))
             {
@@ -339,10 +414,18 @@ namespace UnicodeReplacer
                     {
                         command.Connection = connection;
 
-                        // Updating entry in DB
-                        command.CommandText = "UPDATE ReplaceFilenames SET CyrilicName = @CyrilicName WHERE UnicodeName LIKE @UnicodeName";
-                        command.Parameters.AddWithValue("@UnicodeName", unicodeName);
-                        command.Parameters.AddWithValue("@CyrilicName", cyrilicName);
+                        if (Type == ControlType.Chars)
+                        {
+                            command.CommandText = "UPDATE ReplaceChars SET CyrilicChar = @CyrilicChar WHERE UnicodeChar LIKE @UnicodeChar";
+                            command.Parameters.AddWithValue("@UnicodeChar", unicodeUnit[0]);
+                            command.Parameters.AddWithValue("@CyrilicChar", cyrilicUnit);
+                        }
+                        else
+                        {
+                            command.CommandText = "UPDATE ReplaceNames SET CyrilicName = @CyrilicName WHERE UnicodeName LIKE @UnicodeName";
+                            command.Parameters.AddWithValue("@UnicodeName", unicodeUnit);
+                            command.Parameters.AddWithValue("@CyrilicName", cyrilicUnit);
+                        }
 
                         await command.ExecuteScalarAsync();
                     }
@@ -354,7 +437,7 @@ namespace UnicodeReplacer
             }
         }
 
-        private async void DeleteEntryFromReplaceFilenamesDB(string unicodeName)
+        private async void DeleteEntryFromReplaceDB(string unicodeUnit)
         {
             using (SqliteConnection connection = new SqliteConnection("Data Source=ReplaceDB.db"))
             {
@@ -362,11 +445,19 @@ namespace UnicodeReplacer
 
                 try
                 {
-                    SqliteCommand command = new SqliteCommand(
-                        "DELETE FROM ReplaceFilenames WHERE UnicodeName = @UnicodeName",
-                        connection);
+                    SqliteCommand command = new SqliteCommand();
+                    command.Connection = connection;
 
-                    command.Parameters.AddWithValue("@UnicodeName", unicodeName);
+                    if (Type == ControlType.Chars)
+                    {
+                        command.CommandText = "DELETE FROM ReplaceChars WHERE UnicodeChar = @UnicodeChar";
+                        command.Parameters.AddWithValue("@UnicodeName", unicodeUnit[0]);
+                    }
+                    else
+                    {
+                        command.CommandText = "DELETE FROM ReplaceNames WHERE UnicodeName = @UnicodeName";
+                        command.Parameters.AddWithValue("@UnicodeChar", unicodeUnit);
+                    }
 
                     await command.ExecuteNonQueryAsync();
                 }
@@ -394,18 +485,64 @@ namespace UnicodeReplacer
             if (String.IsNullOrEmpty(userInputStr) || userInputStr.Equals(cell.Value))
                 return;
 
-            // Checking correction of user input
-            if (dataGrid.Columns[colInd].HeaderText.Equals("Название"))
+            if (Type == ControlType.Chars)
             {
-                if (!TextHandlers.IsUnicodeInText(userInputStr))
+                // Checking correction of user input
+                if (dataGrid.Columns[colInd].HeaderText.Equals("Юникод-символ"))
                 {
-                    dataGrid.Rows[rowInd].ErrorText = "Введите название с юникод-символами";
-                    dataGrid.CancelEdit();
+                    if (userInputStr.Length > 1)
+                    {
+                        dataGrid.Rows[rowInd].ErrorText = "Введите не более одного символа";
+                        dataGrid.CancelEdit();
+                    }
+                    else if (TextHandlers.IsCharCyrilic(userInputStr[0]))
+                    {
+                        dataGrid.Rows[rowInd].ErrorText = "Введите символ, не входящий в кириллическую кодировку";
+                        dataGrid.CancelEdit();
+                    }
+                    else
+                    {
+                        if (dict.ContainsKey(userInputStr))
+                        {
+                            dataGrid.Rows[rowInd].ErrorText = "Этот символ уже есть в таблице";
+                            dataGrid.CancelEdit();
+                        }
+                        else
+                            dataGrid.Rows[rowInd].HeaderCell.Value = (int)userInputStr[0];
+                    }
                 }
-                else if (dict.ContainsKey(userInputStr))
+                else if (dataGrid.Columns[colInd].HeaderText.Equals("Замена"))
                 {
-                    dataGrid.Rows[rowInd].ErrorText = "Это название уже есть в таблице";
-                    dataGrid.CancelEdit();
+                    if (userInputStr == string.Empty || userInputStr.Length == 0)
+                        return;
+
+                    if (userInputStr.Length > maxReplaceChars)
+                    {
+                        dataGrid.Rows[rowInd].ErrorText = String.Format("Введите не более {0} символов", maxReplaceChars);
+                        dataGrid.CancelEdit();
+                    }
+                    else if (!TextHandlers.IsCharCyrilic(userInputStr[0]))
+                    {
+                        dataGrid.Rows[rowInd].ErrorText = "Введите символы, входящие в кириллическую кодировку";
+                        dataGrid.CancelEdit();
+                    }
+                }
+            }
+            else
+            {
+                // Checking correction of user input
+                if (dataGrid.Columns[colInd].HeaderText.Equals("Юникод-название"))
+                {
+                    if (!TextHandlers.IsUnicodeInText(userInputStr))
+                    {
+                        dataGrid.Rows[rowInd].ErrorText = "Введите название с юникод-символами";
+                        dataGrid.CancelEdit();
+                    }
+                    else if (dict.ContainsKey(userInputStr))
+                    {
+                        dataGrid.Rows[rowInd].ErrorText = "Это название уже есть в таблице";
+                        dataGrid.CancelEdit();
+                    }
                 }
             }
         }
@@ -456,7 +593,12 @@ namespace UnicodeReplacer
         {
             bool madeChanged = SaveChanges();
             if (madeChanged)
-                fileParams.UpdateSelectedCellInFileParamsTable();
+            {
+                if (Type == ControlType.Chars)
+                    filenameChars.UpdateReplaceRow();
+                else
+                    fileParams.UpdateSelectedCellInFileParamsTable();
+            }
 
             HasChanges = false;
             btnDeleteRow.Enabled = dataGrid.Rows.Count > 1;
